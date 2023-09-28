@@ -26,12 +26,12 @@ class Counter(object):
     def value(self):
         return self.val.value
 
-def get_classwise_channel_image(id):
+def get_classwise_channel_image(id, num_class = 12, W = 256, H = 256):
     counter.add(1)
-    num_class = 25  # Num of channels = num of classes
+
     temp_info = info[id]
     
-    W, H = 1440, 2560
+
     c_img = torch.zeros(num_class, H, W)  # C*H*W
     
     class_id = temp_info['class_id']
@@ -43,7 +43,10 @@ def get_classwise_channel_image(id):
         y1 = int(y1)
         x2 = int(x1+w)
         y2 = int(y1+h)
-        channel = class_id[i]-1
+        channel = class_id[i]
+
+        assert channel >= 0 and channel < num_class, f"Expected class_id in range [0, {num_class-1}], got {channel}"
+
         #c_img[channel, x1:x2+1, y1:y2+1] = 1
         c_img[channel, y1:y2, x1:x2+1  ] =1
     
@@ -58,20 +61,22 @@ def get_classwise_channel_image(id):
     if counter.value % 100 == 0 and counter.value >= 100:
         print('{} / {}'.format(counter.value, len(info.keys())))  
     
-    np.save( save_dir + '%s'%(id), c_img)
+    np.savez_compressed( save_dir + '%s'%(id), c_img)
     
+    # return id, c_img
+
     #torch.save(c_img, os.path.join(save_dir, str(id) + '.pt'))
     #sys.getsizeof
     
     
     
-save_dir = 'data/25ChanImages/'
+save_dir = 'fp_data/rplan10ChanImages/'
 if os.path.exists(save_dir):
     raise Exception("dir already exists")
 else:
-    os.mkdir(save_dir) 
+    os.makedirs(save_dir)
 
-with open('data/rico_box_info.pkl', 'rb') as f:
+with open('layoutgmn_data/FP_box_info.pkl', 'rb') as f:
     info = pickle.load(f)  
 ids = list(info.keys())     
 counter = Counter()
@@ -80,6 +85,8 @@ p = Pool(20)
 print("[INFO] Start")
 results = p.map(get_classwise_channel_image, info.keys())
 print("Done")
+
+# np.save(save_path, results)
 
 
 #for i in range (1):
