@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+
+# Source: https://github.com/dips4717/gcn-cnn/blob/master/compute_25Chan_Imgs.py
+
 """
 Created on Tue Mar  3 11:48:01 2020
 
@@ -70,7 +74,7 @@ def get_classwise_channel_image(id, num_class = 12, W = 256, H = 256):
     
     
     
-save_dir = 'fp_data/rplan10ChanImages/'
+save_dir = 'fp_data/rplan12ChanImages/'
 if os.path.exists(save_dir):
     raise Exception("dir already exists")
 else:
