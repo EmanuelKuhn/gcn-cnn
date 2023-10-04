@@ -37,6 +37,8 @@ from eval_metrics.get_overall_Classwise_IOU import get_overall_Classwise_IOU
 from eval_metrics.get_overall_pix_acc import get_overall_pix_acc
 from evaluate import getBoundingBoxes_from_info
 
+import wandb
+
 #%%
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -149,7 +151,9 @@ def main(opt):
         resume = load_checkpoint(pt_model)
         model.load_state_dict(resume['state_dict'])  
         model = model.cuda()
-        
+    
+    wandb.init(project="gcn-cnn", name=save_dir.split('/')[-1])
+    wandb.config.update(opt)
     
     if opt.loss =='mse':
         criterion = nn.MSELoss()    
@@ -174,12 +178,15 @@ def main(opt):
     epoch_done = True
     iteration = 0
     epoch = 0
+
+    total_epoch_time = 0
     
     model.train()
     torch.set_grad_enabled(True)
     time_s = time.time()
     while True:
         if epoch_done:
+
             if epoch in [5,12,17]: 
                 decay_factor = opt.learning_rate_decay_rate
                 set_lr2(optimizer, decay_factor)
@@ -190,6 +197,8 @@ def main(opt):
             losses_dml = AverageMeter()
 
             epoch_done = False
+
+            total_epoch_time = 0
         
         # Load a batch of data from train split
         data =  loader.get_batch('train')
@@ -262,15 +271,36 @@ def main(opt):
             iteration = 0 
 
 
-        if iteration%10 == 0 or data['bounds']['wrapped']:
+        log_interval = 10
+
+        if iteration % log_interval == 0 or data['bounds']['wrapped']:
+
+
             elsp_time = (time.time() - time_s)
+
+            total_epoch_time += elsp_time
+
+            wandb.log({
+                "loss": losses.val,
+                "loss_recon": losses_recon.val,
+                "loss_dml": losses_dml.val,
+
+                "loss_avg": losses.avg,
+                "loss_recon_avg": losses_recon.avg,
+                "loss_dml_avg": losses_dml.avg,
+
+                "time_per_sample": elsp_time / (log_interval * opt.batch_size),
+                "time_per_sample_epoch_avg": total_epoch_time / ((iteration + 1) * opt.batch_size),
+            })
+
+
             print( 'Epoch [%02d] [%05d / %05d] Average_Loss: %.5f    Recon Loss: %.4f  DML Loss: %.4f'%(epoch+1, iteration*opt.batch_size, len(loader), losses.avg, losses_recon.avg, losses_dml.avg ))
             with open(save_dir+'/log.txt', 'a') as f:
                 f.write('Epoch [%02d] [%05d / %05d  ] Average_Loss: %.5f  Recon Loss: %.4f  DML Loss: %.4f\n'%(epoch+1, iteration*opt.batch_size, len(loader), losses.avg, losses_recon.avg, losses_dml.avg ))
                 f.write('Completed {} images in {}'.format(iteration*opt.batch_size, elsp_time))
                 
             
-            print('Completed {} images in {}'.format(iteration*opt.batch_size, elsp_time))
+            print('Completed {} images in {}'.format(iteration*opt.batch_size, total_epoch_time))
             time_s = time.time()
         
             #print( 'Epoch [%02d] [%05d ] Average_Loss: %.3f' % (epoch+1, iteration*opt.batch_size, len(loader)))
@@ -288,7 +318,8 @@ def main(opt):
             'state_dict': state_dict,
             'epoch': (epoch+1)}, is_best=False, fpath=osp.join(save_dir, 'ckp_ep' + str(epoch + 1) + '.pth.tar'))
 
-            perform_tests_dml(model, loader_test, boundingBoxes,  save_dir, epoch)
+            # perform_tests_dml takes a lot of time
+            # perform_tests_dml(model, loader_test, boundingBoxes,  save_dir, epoch)
             
             # set model to training mode again.
             model.train()
