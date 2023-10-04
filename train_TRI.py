@@ -143,6 +143,12 @@ def main(opt):
     # loader_test = RICO_ComponentDataset(opt, data_transform)
     model = models.create(opt.decoder_model, opt)
     model = model.cuda()
+
+    # Should use square images for rplan
+    expected_output_size = (239, 239)
+
+    assert model.expected_output_size == expected_output_size, "Expected output size is not correct"
+
  
     if opt.pretrained:
         pt_model = opt.pt_model
@@ -202,45 +208,14 @@ def main(opt):
         
         # Load a batch of data from train split
         data =  loader.get_batch('train')
-        images_a = data['images_a'].cuda()
-        images_p = data['images_p'].cuda()
-        images_n = data['images_n'].cuda()
-        
-        sg_data_a = {key: torch.from_numpy(data['sg_data_a'][key]).cuda() for key in data['sg_data_a']}
-        sg_data_p = {key: torch.from_numpy(data['sg_data_p'][key]).cuda() for key in data['sg_data_p']}
-        sg_data_n = {key: torch.from_numpy(data['sg_data_n'][key]).cuda() for key in data['sg_data_n']}
-        
+
+        images_a, images_p, images_n = resize_25channel_images(data, decoder_model=opt.decoder_model, output_size=expected_output_size)
+
         #2. Forward model and compute loss
-#        torch.cuda.synchronize()   # Waits for all kernels in all streams on a CUDA device to complete. 
-        optimizer.zero_grad()
-        emb_a, out_a = model(sg_data_a)
-        emb_p, out_p = model(sg_data_p)
-        emb_n, out_n = model(sg_data_n)
-        
-        emb_a = F.normalize(emb_a)
-        emb_p = F.normalize(emb_p)
-        emb_n = F.normalize(emb_n)
+        emb_a, out_a, emb_p, out_p, emb_n, out_n = forward(model, optimizer, data)
 
-        # Should use square images for rplan
-        expected_output_size = (239, 239)
+        recon_loss = compute_recon_loss(criterion, out_a, out_p, out_n, images_a, images_p, images_n)
 
-        assert model.expected_output_size == expected_output_size, "Expected output size is not correct"
-        
-        if opt.decoder_model == 'strided': 
-            images_a = F.interpolate(images_a, size= expected_output_size)
-            images_p = F.interpolate(images_p, size= expected_output_size)
-            images_n = F.interpolate(images_n, size= expected_output_size)
-        elif opt.decoder_model == 'upsample':
-            raise NotImplementedError("Expected to use strided decoder")
-            # images_a = F.interpolate(images_a, size= [254,126])
-            # images_p = F.interpolate(images_p, size= [254,126])
-            # images_n = F.interpolate(images_n, size= [254,126])
- 
-        loss_a = criterion(out_a, images_a)
-        loss_p = criterion(out_p, images_p)
-        loss_n = criterion(out_n, images_n)
-            
-        recon_loss = torch.mean(torch.stack([loss_a , loss_p , loss_n]))
         ml_loss = dml_loss(emb_a, emb_p, emb_n)
         
         loss = ml_loss + lambda_mul*recon_loss
@@ -303,14 +278,8 @@ def main(opt):
             print('Completed {} images in {}'.format(iteration*opt.batch_size, total_epoch_time))
             time_s = time.time()
         
-            #print( 'Epoch [%02d] [%05d ] Average_Loss: %.3f' % (epoch+1, iteration*opt.batch_size, len(loader)))
-        
 
-            # print( 'Epoch [%02d] [%05d / %05d] Average_Loss: %.5f    Recon Loss: %.4f  DML Loss: %.4f'%(epoch+1, iteration*opt.batch_size, len(loader), losses.avg, losses_recon.avg, losses_dml.avg ))
-
-            
-        #del data, images, sg_data, out, loss 
-    
+                
         if (epoch+1) % 5 == 0  and epoch_done:
             state_dict = model.state_dict()  
             
@@ -326,6 +295,49 @@ def main(opt):
             torch.set_grad_enabled(True)
         if epoch > 25:
             break
+
+def resize_25channel_images(data, decoder_model, output_size):
+
+    images_a = data['images_a'].cuda()
+    images_p = data['images_p'].cuda()
+    images_n = data['images_n'].cuda()
+
+    if decoder_model == 'strided': 
+        images_a = F.interpolate(images_a, size=output_size)
+        images_p = F.interpolate(images_p, size=output_size)
+        images_n = F.interpolate(images_n, size=output_size)
+    else:
+        raise NotImplementedError("Expected to use strided decoder")
+    
+    return images_a, images_p, images_n
+
+def forward(model, optimizer, data):
+    sg_data_a = {key: torch.from_numpy(data['sg_data_a'][key]).cuda() for key in data['sg_data_a']}
+    sg_data_p = {key: torch.from_numpy(data['sg_data_p'][key]).cuda() for key in data['sg_data_p']}
+    sg_data_n = {key: torch.from_numpy(data['sg_data_n'][key]).cuda() for key in data['sg_data_n']}
+        
+#        torch.cuda.synchronize()   # Waits for all kernels in all streams on a CUDA device to complete. 
+    optimizer.zero_grad()
+    emb_a, out_a = model(sg_data_a)
+    emb_p, out_p = model(sg_data_p)
+    emb_n, out_n = model(sg_data_n)
+        
+    emb_a = F.normalize(emb_a)
+    emb_p = F.normalize(emb_p)
+    emb_n = F.normalize(emb_n)
+
+    return emb_a,out_a,emb_p,out_p,emb_n,out_n
+
+
+def compute_recon_loss(criterion, out_a, out_p, out_n, images_a, images_p, images_n):
+
+    loss_a = criterion(out_a, images_a)
+    loss_p = criterion(out_p, images_p)
+    loss_n = criterion(out_n, images_n)
+        
+    recon_loss = torch.mean(torch.stack([loss_a , loss_p , loss_n]))
+
+    return recon_loss
 
 def perform_tests_dml(model, loader_test, boundingBoxes,  save_dir, ep):
     model.eval()  
