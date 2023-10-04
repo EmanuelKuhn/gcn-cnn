@@ -135,9 +135,7 @@ def main(opt):
     #         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     # ])
     
-    save_dir = 'trained_model/model_dec_{}_dim{}'.format(opt.decoder_model, opt.dim)
-    mkdir_if_missing(save_dir)
-    print ('\nOutput dir: ', save_dir)
+    model_name = f"model_dec_{opt.decoder_model}_dim{opt.dim}"
     
     loader = RICO_TripletDataset(opt, transform=None) 
     loader_test = RICO_ComponentDataset(opt, transform=None)
@@ -158,8 +156,13 @@ def main(opt):
         model.load_state_dict(resume['state_dict'])  
         model = model.cuda()
     
-    wandb.init(project="gcn-cnn", name=save_dir.split('/')[-1])
+    wandb.init(project="gcn-cnn", name=model_name.split('/')[-1], tags=["v0.9"])
     wandb.config.update(opt)
+
+    save_dir = f'trained_model/{model_name}/{wandb.run.id}'
+    mkdir_if_missing(save_dir)
+    print ('\nOutput dir: ', save_dir)
+
     
     if opt.loss =='mse':
         criterion = nn.MSELoss()    
