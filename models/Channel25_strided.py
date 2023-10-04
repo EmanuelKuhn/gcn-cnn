@@ -118,9 +118,11 @@ class GraphEncoder_25ChanStridedDecoder(nn.Module):
             self.geom_feat_size = 7
         
         
-        num_objs = 26 #Our label starts from 1 to 25, nn.embeddings starts from 0 index
+        num_objs = 13 #Our label starts from 1 to 25, nn.embeddings starts from 0 index
         self.obj_embed = build_embeding_layer(num_objs, 128, self.drop_prob)
         
+        out_channels = 12
+
         if self.opt.use_box_feats:
             self.proj_obj_feats = nn.Sequential(*[nn.Linear(5,128), nn.ReLU(), nn.Dropout(0.5)])
             self.proj_cat_feats = nn.Sequential(*[nn.Linear(128+128,128), nn.ReLU(), nn.Dropout(0.5)]) 
@@ -138,16 +140,16 @@ class GraphEncoder_25ChanStridedDecoder(nn.Module):
         self.decoder_FC = nn.Linear(self.dim, 32*14*6)
         
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(32,25,3,  stride=2),
+            nn.ConvTranspose2d(32,out_channels,3,  stride=2),
             nn.ReLU(),
             
-            nn.ConvTranspose2d(25,25,3, stride=2),
+            nn.ConvTranspose2d(out_channels,out_channels,3, stride=2),
             nn.ReLU(),
            
-            nn.ConvTranspose2d(25,25,3, stride=2),
+            nn.ConvTranspose2d(out_channels,out_channels,3, stride=2),
             nn.ReLU(),
            
-            nn.ConvTranspose2d(25,25,3, stride=2),
+            nn.ConvTranspose2d(out_channels,out_channels,3, stride=2),
             nn.ReLU(),
             )
         
