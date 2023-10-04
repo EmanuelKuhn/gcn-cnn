@@ -107,7 +107,7 @@ class RICO_ComponentDataset(Dataset):
         print('\nLoading geometric graphs and features from {}\n'.format(self.sg_geometry_dir))
         
         self.info = pickle.load(open('layoutgmn_data/FP_box_info_list.pkl', 'rb'))
-        #self.Channel_img_dir = '/mnt/amber/scratch/Dipu/RICO/25ChannelImages'
+        self.Channel_img_dir = self.opt.Channel25_img_dir
         self.transform = transform
         self.loader = default_loader     
        
@@ -174,25 +174,32 @@ class RICO_ComponentDataset(Dataset):
     def __len__(self):
         return len(self.info)
     
+    @staticmethod
+    def load_npz(npz_path):
+        with np.load(npz_path) as data:
+            img = torch.tensor(data["arr_0"], dtype=torch.float32)
+        
+        return img
+
+
     def __getitem__(self, index):
 #        ix = index #self.split_ix[index]
         
         sg_data = self.get_graph_data(index)
                 
-#        image_id = self.info[index]['id']
-        
-#        if self.opt.use_25_images:
-#            channel25_path = os.path.join(self.Channel_img_dir, image_id + '.npy' )
-#            img = np.load(channel25_path)    
-#            img = torch.tensor(img.astype(np.float32))
-#        else:
-#            img_name = os.path.join(self.img_dir, str(image_id) +'.png' )
-#            img = self.loader(img_name)
-#            img = self.transform(img)
-   
-#        return (sg_data, 
-#                img,
-#                index)   
+        image_id = self.info[index]['id']
+
+        if self.opt.use_25_images:
+            channel25_path = os.path.join(self.Channel_img_dir, image_id + '.npz' )
+            img = self.load_npz(channel25_path)
+        else:
+            img_name = os.path.join(self.img_dir, str(image_id) +'.png' )
+            img = self.loader(img_name)
+            img = self.transform(img)
+
+        return (sg_data, 
+            img,
+            index)   
 #        
         return (sg_data, 
                 index)   
@@ -265,15 +272,15 @@ class RICO_ComponentDataset(Dataset):
 
 #        mask_batch = np.zeros([batch_size * seq_per_img, self.seq_length + 2], dtype = 'float32')
         infos = []
-#        images = []
+        images = []
         wrapped = False
         
 
         for i in range(batch_size):
             # fetch image
-            tmp_sg, ix, tmp_wrapped = self._prefetch_process[split].get()
+            tmp_sg, tmp_img, ix, tmp_wrapped = self._prefetch_process[split].get()
             sg_batch.append(tmp_sg)
-#            images.append(tmp_img)     
+            images.append(tmp_img)     
            
             # record associated info as well
             info_dict = {}
@@ -293,7 +300,7 @@ class RICO_ComponentDataset(Dataset):
         data['infos'] = infos
 
         data['sg_data'] = self.batch_sg(sg_batch, max_box_len)
-#        data['images'] = torch.stack(images)
+        data['images'] = torch.stack(images)
         
         return data
 
