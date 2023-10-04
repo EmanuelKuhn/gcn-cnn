@@ -288,9 +288,15 @@ def main(opt):
         if (epoch+1) % 5 == 0  and epoch_done:
             state_dict = model.state_dict()  
             
+            model_path = osp.join(save_dir, 'ckp_ep' + str(epoch + 1) + '.pth.tar')
+
             save_checkpoint({
             'state_dict': state_dict,
-            'epoch': (epoch+1)}, is_best=False, fpath=osp.join(save_dir, 'ckp_ep' + str(epoch + 1) + '.pth.tar'))
+            'epoch': (epoch+1)}, is_best=False, fpath=model_path)
+
+            model_art = wandb.Artifact(f"model_{wandb.run.id}", type="model")
+            model_art.add_file(model_path)
+            wandb.run.log_artifact(model_art)
 
             # perform_tests_dml takes a lot of time
             # perform_tests_dml(model, loader_test, boundingBoxes,  save_dir, epoch)
