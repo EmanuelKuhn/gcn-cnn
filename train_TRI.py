@@ -285,14 +285,15 @@ def main(opt):
             log_validation_loss(model, loader_test, criterion, expected_output_size, epoch)
 
                 
-        if (epoch+1) % 5 == 0  and epoch_done:
+        if epoch % 5 == 0  and epoch_done:
             state_dict = model.state_dict()  
             
-            model_path = osp.join(save_dir, 'ckp_ep' + str(epoch + 1) + '.pth.tar')
+            model_path = osp.join(save_dir, f'ckp_ep{epoch}.pth.tar')
 
             save_checkpoint({
-            'state_dict': state_dict,
-            'epoch': (epoch+1)}, is_best=False, fpath=model_path)
+                'state_dict': state_dict,
+                'epoch': epoch
+            }, is_best=False, fpath=model_path)
 
             model_art = wandb.Artifact(f"model_{wandb.run.id}", type="model")
             model_art.add_file(model_path)
