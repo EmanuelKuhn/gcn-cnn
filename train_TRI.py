@@ -279,7 +279,7 @@ def main(opt):
             time_s = time.time()
         
         if epoch_done:
-            log_validation_loss(model, loader_test, criterion, expected_output_size, dml_loss, lambda_mul, epoch)
+            log_validation_loss(model, loader_test, criterion, expected_output_size, epoch)
 
                 
         if (epoch+1) % 5 == 0  and epoch_done:
