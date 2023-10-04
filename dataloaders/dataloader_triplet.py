@@ -119,7 +119,7 @@ class RICO_TripletDataset(Dataset):
         
         
         #Instantiate the ix
-        self.split_ix = {'train': [],  'gallery': [], 'query':[]}
+        self.split_ix = {'train': [],  'gallery': [], 'val':[]}
         
         # id2index: the dataset is indexed with indicies of the list info:
         self.id2index = defaultdict(dict)
@@ -133,13 +133,13 @@ class RICO_TripletDataset(Dataset):
             if img in train_uis:
                 self.split_ix['train'].append(ix)
             elif img in splits["val_fps"]:
-                self.split_ix['query'].append(ix)
+                self.split_ix['val'].append(ix)
             # elif img in gallery_uis:
             #     self.split_ix['gallery'].append(ix)
             # else:
             #    raise Exception(f'image {img} ({isinstance(img, str)}) is not in the original list')
         
-        self.iterators = {'train': 0,  'query': 0}
+        self.iterators = {'train': 0,  'val': 0}
         
         for split in self.split_ix.keys():
             print('assigned %d images to split %s'%(len(self.split_ix[split]), split))
