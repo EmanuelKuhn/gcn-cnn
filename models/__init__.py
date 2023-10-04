@@ -9,16 +9,16 @@ from .RGB_strided import GraphEncoder_RGBStridedDecoder
 
 __factory = {
     'strided': GraphEncoder_25ChanStridedDecoder,
-    'upsample':GraphEncoder_25ChanUpSampleDecoder,
-    'stridedRGB': GraphEncoder_RGBStridedDecoder,
-    'upsampleRGB': GraphEncoder_RGBUpSampleDecoder,    
+    # 'upsample':GraphEncoder_25ChanUpSampleDecoder,
+    # 'stridedRGB': GraphEncoder_RGBStridedDecoder,
+    # 'upsampleRGB': GraphEncoder_RGBUpSampleDecoder,    
 }
 
 
 def names():
     return sorted(__factory.keys())
 
-def create(name, *args, **kwargs):
+def create(name, *args, **kwargs) -> GraphEncoder_25ChanStridedDecoder:
     """
     Create a loss instance.
     Parameters
@@ -27,5 +27,6 @@ def create(name, *args, **kwargs):
         the name of loss function
     """
     if name not in __factory:
-        raise KeyError("Unknown network:", name)
+        raise KeyError(f"Unknown network: {name}; (models other than strided are commented out))")
+    
     return __factory[name](*args, **kwargs)

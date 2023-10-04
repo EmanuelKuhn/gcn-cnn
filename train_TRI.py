@@ -126,18 +126,19 @@ class TripletLoss(nn.Module):
 #%%
 def main(opt):
     print(opt)
-    data_transform = transforms.Compose([   # Only used if decoder is trained using 3-Channel RBG (not 25Channel Images)
-            transforms.Resize([254,126]),  # transforms.Resize([254,126])
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
+    
+    # data_transform = transforms.Compose([   # Only used if decoder is trained using 3-Channel RBG (not 25Channel Images)
+    #         transforms.Resize([254,126]),  # transforms.Resize([254,126])
+    #         transforms.ToTensor(),
+    #         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    # ])
     
     save_dir = 'trained_model/model_dec_{}_dim{}'.format(opt.decoder_model, opt.dim)
     mkdir_if_missing(save_dir)
     print ('\nOutput dir: ', save_dir)
     
-    loader = RICO_TripletDataset(opt, data_transform) 
-    loader_test = RICO_ComponentDataset(opt, data_transform)
+    loader = RICO_TripletDataset(opt, transform=None) 
+    # loader_test = RICO_ComponentDataset(opt, data_transform)
     model = models.create(opt.decoder_model, opt)
     model = model.cuda()
  
@@ -168,7 +169,7 @@ def main(opt):
     
    
     # Bounding boxes are only used for evaluation
-    boundingBoxes = getBoundingBoxes_from_info()
+    # boundingBoxes = getBoundingBoxes_from_info()
     
     epoch_done = True
     iteration = 0
@@ -216,9 +217,10 @@ def main(opt):
             images_p = F.interpolate(images_p, size= [239,111])
             images_n = F.interpolate(images_n, size= [239,111])
         elif opt.decoder_model == 'upsample':
-            images_a = F.interpolate(images_a, size= [254,126])
-            images_p = F.interpolate(images_p, size= [254,126])
-            images_n = F.interpolate(images_n, size= [254,126])
+            raise NotImplementedError("Expected to use strided decoder")
+            # images_a = F.interpolate(images_a, size= [254,126])
+            # images_p = F.interpolate(images_p, size= [254,126])
+            # images_n = F.interpolate(images_n, size= [254,126])
  
         loss_a = criterion(out_a, images_a)
         loss_p = criterion(out_p, images_p)

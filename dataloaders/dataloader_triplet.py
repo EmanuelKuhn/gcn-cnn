@@ -182,9 +182,11 @@ class RICO_TripletDataset(Dataset):
 
 
         else:
-            img_name = os.path.join(self.img_dir, str(image_id) +'.png' )
-            img = self.loader(img_name)
-            img = self.transform(img)
+            raise NotImplementedError("Expected to use use_25_images.")
+
+            # img_name = os.path.join(self.img_dir, str(image_id) +'.png' )
+            # img = self.loader(img_name)
+            # img = self.transform(img)
    
         return (sg_data, 
                 img,
