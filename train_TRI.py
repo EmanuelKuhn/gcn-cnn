@@ -140,8 +140,8 @@ def main(opt):
     print ('\nOutput dir: ', save_dir)
     
     loader = RICO_TripletDataset(opt, transform=None) 
-    # loader_test = RICO_ComponentDataset(opt, data_transform)
-    model = models.create(opt.decoder_model, opt)
+    loader_test = RICO_ComponentDataset(opt, transform=None)
+    model: torch.nn.Module = models.create(opt.decoder_model, opt)
     model = model.cuda()
 
     # Should use square images for rplan
@@ -278,6 +278,8 @@ def main(opt):
             print('Completed {} images in {}'.format(iteration*opt.batch_size, total_epoch_time))
             time_s = time.time()
         
+        if epoch_done:
+            log_validation_loss(model, loader_test, criterion, expected_output_size, dml_loss, lambda_mul, epoch)
 
                 
         if (epoch+1) % 5 == 0  and epoch_done:
@@ -345,6 +347,51 @@ def compute_recon_loss(criterion, out_a, out_p, out_n, images_a, images_p, image
     recon_loss = torch.mean(torch.stack([loss_a , loss_p , loss_n]))
 
     return recon_loss
+
+
+def log_validation_loss(model, loader, criterion, expected_output_size, epoch):
+    torch.set_grad_enabled(False)
+    model.eval()
+
+    # Setup meter
+    losses_recon = AverageMeter()
+
+
+    while True:
+        data =  loader.get_batch('val')
+
+        try:
+            images = data['images'].cuda()
+        except Exception as e:
+            print(f"{data.keys()=}")
+            raise e
+        
+        images = F.interpolate(images, size=expected_output_size)
+
+        sg_data = {key: torch.from_numpy(data['sg_data'][key]).cuda() for key in data['sg_data']}
+
+
+        #2. Forward model and compute loss
+
+        x_enc, x_dec = model(sg_data)
+        x_enc = F.normalize(x_enc)
+
+        recon_loss_x = criterion(x_dec, images)
+
+        losses_recon.update(recon_loss_x.item())
+
+        if data['bounds']['wrapped']:
+            break
+
+    wandb.log({
+        "val/loss_recon_avg": losses_recon.avg,
+        "epoch": epoch,
+    })
+
+    print(f"Validation recon loss: {losses_recon.avg}")
+
+    torch.set_grad_enabled(True)
+    model.train()
 
 def perform_tests_dml(model, loader_test, boundingBoxes,  save_dir, ep):
     model.eval()  
