@@ -212,7 +212,7 @@ def main(opt):
         images_a, images_p, images_n = resize_25channel_images(data, decoder_model=opt.decoder_model, output_size=expected_output_size)
 
         #2. Forward model and compute loss
-        emb_a, out_a, emb_p, out_p, emb_n, out_n = forward(model, optimizer, data)
+        emb_a, out_a, emb_p, out_p, emb_n, out_n = forward_train(model, optimizer, data)
 
         recon_loss = compute_recon_loss(criterion, out_a, out_p, out_n, images_a, images_p, images_n)
 
@@ -248,7 +248,7 @@ def main(opt):
 
         log_interval = 10
 
-        if iteration % log_interval == 0 or data['bounds']['wrapped']:
+        if iteration % log_interval == 0 or epoch_done:
 
 
             elsp_time = (time.time() - time_s)
@@ -311,13 +311,19 @@ def resize_25channel_images(data, decoder_model, output_size):
     
     return images_a, images_p, images_n
 
-def forward(model, optimizer, data):
+def forward_train(model, optimizer, data):
+    # torch.cuda.synchronize()   # Waits for all kernels in all streams on a CUDA device to complete. 
+    optimizer.zero_grad()
+
+    return model_forward(model, data)
+
+
+
+def model_forward(model, data):
     sg_data_a = {key: torch.from_numpy(data['sg_data_a'][key]).cuda() for key in data['sg_data_a']}
     sg_data_p = {key: torch.from_numpy(data['sg_data_p'][key]).cuda() for key in data['sg_data_p']}
     sg_data_n = {key: torch.from_numpy(data['sg_data_n'][key]).cuda() for key in data['sg_data_n']}
         
-#        torch.cuda.synchronize()   # Waits for all kernels in all streams on a CUDA device to complete. 
-    optimizer.zero_grad()
     emb_a, out_a = model(sg_data_a)
     emb_p, out_p = model(sg_data_p)
     emb_n, out_n = model(sg_data_n)
