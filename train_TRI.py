@@ -293,7 +293,8 @@ def main(opt):
             # set model to training mode again.
             model.train()
             torch.set_grad_enabled(True)
-        if epoch > 25:
+               
+        if epoch > opt.max_epochs:
             break
 
 def resize_25channel_images(data, decoder_model, output_size):

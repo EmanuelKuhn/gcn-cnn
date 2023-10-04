@@ -99,6 +99,8 @@ def parse_opt():
     parser.add_argument('--pt_model', type=str, default=None,
                 help='Path to pretrained model, used if --pretrained is True')
 
+    parser.add_argument('--max_epochs', type=int, default=25)
+
     args = parser.parse_args()
 
     return args
