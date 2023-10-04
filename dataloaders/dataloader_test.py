@@ -20,6 +20,35 @@ import random
 import pickle
 import torch.nn.functional as F
 
+
+FP_DATA_PATH = "layoutgmn_data_changed_splits/FP_data.p"
+
+def pickle_load(fname):
+    with open(fname, 'rb') as pf:
+         data = pickle.load(pf)
+         print('Loaded {}.'.format(fname))
+         return data
+
+# def load_pickle(path):
+#     with open(path, "rb") as f:
+#         return pkl.load(f)
+
+
+def get_id_from_path(path):
+    return path.split("/")[-1].split(".")[0]
+
+def get_splits(path=FP_DATA_PATH):
+    fp_data = pickle_load(path)
+
+
+    splits = dict()
+
+    for key in fp_data:
+        splits[key] = list(map(get_id_from_path, fp_data[key]))
+
+    return splits
+
+
 def default_loader(path):
     return Image.open(path).convert('RGB')
 
@@ -74,10 +103,10 @@ class RICO_ComponentDataset(Dataset):
         
         self.opt = opt
         self.batch_size = self.opt.batch_size
-        self.sg_geometry_dir = 'graph_data/geometry-directed/'                
+        self.sg_geometry_dir = 'fp_data/geometry-directed/'                
         print('\nLoading geometric graphs and features from {}\n'.format(self.sg_geometry_dir))
         
-        self.info = pickle.load(open('data/rico_box_info_list.pkl', 'rb'))
+        self.info = pickle.load(open('layoutgmn_data/FP_box_info_list.pkl', 'rb'))
         #self.Channel_img_dir = '/mnt/amber/scratch/Dipu/RICO/25ChannelImages'
         self.transform = transform
         self.loader = default_loader     
@@ -87,41 +116,45 @@ class RICO_ComponentDataset(Dataset):
         
         self.geom_feat_size = 8
 
+        splits = get_splits()
+
         
-        # Separate out indexes for the train and test 
-        UI_data = pickle.load(open("data/UI_data.p", "rb"))
-        train_uis = UI_data['train_uis']
+        # # Separate out indexes for the train and test 
+        # UI_data = pickle.load(open("data/UI_data.p", "rb"))
+        # train_uis = UI_data['train_uis']
         
-        UI_test_data = pickle.load(open("data/UI_test_data.p", "rb"))
-        query_uis = UI_test_data['query_uis']
-        gallery_uis = UI_test_data['gallery_uis']
+        # UI_test_data = pickle.load(open("data/UI_test_data.p", "rb"))
+        # query_uis = UI_test_data['query_uis']
+        # gallery_uis = UI_test_data['gallery_uis']
         
-        #all_names  = UI_data['ui_names']
-        #test_uis  = UI_data['test_uis'] 
+        # #all_names  = UI_data['ui_names']
+        # #test_uis  = UI_data['test_uis'] 
         
-        # Remove '.png' extension for ease
+        # # Remove '.png' extension for ease
         
-        train_uis = [x.replace('.png', '') for x in train_uis]
-        query_uis = [x.replace('.png', '') for x in query_uis]
-        gallery_uis = [x.replace('.png', '') for x in gallery_uis]
+        # train_uis = [x.replace('.png', '') for x in train_uis]
+        # query_uis = [x.replace('.png', '') for x in query_uis]
+        # gallery_uis = [x.replace('.png', '') for x in gallery_uis]
         
-        uis_ncomponent_g100 = pickle.load(open('data/ncomponents_g100_imglist.pkl', 'rb'))
+        # # uis_ncomponent_g100 = pickle.load(open('data/ncomponents_g100_imglist.pkl', 'rb'))
         
         #Instantiate the ix
-        self.split_ix = {'train': [],  'gallery': [], 'query':[]}
+        self.split_ix = {'train': [],  'gallery': [], 'val':[]}
         
         for ix in range(len(self.info)):
             img = self.info[ix]['id']
-            if img in train_uis and img not in uis_ncomponent_g100 :
+            if img in splits["train_fps"] :
                 self.split_ix['train'].append(ix)
-            elif img in query_uis and img not in uis_ncomponent_g100:
-                self.split_ix['query'].append(ix)
-            elif img in gallery_uis and img not in uis_ncomponent_g100:
+            elif img in splits["val_fps"]:
+                self.split_ix['val'].append(ix)
+            else:
                 self.split_ix['gallery'].append(ix)
+            # elif img in gallery_uis and img not in uis_ncomponent_g100:
+            #     self.split_ix['gallery'].append(ix)
             #else:
              #   raise Exception('image is not in the original list')
 
-        self.iterators = {'train': 0,  'query': 0,  'gallery': 0}
+        self.iterators = {'train': 0,  'val': 0, 'gallery':0}
         
         for split in self.split_ix.keys():
             #self.logger.info('assigned %d images to split %s' % (len(self.split_ix[split]), split)
@@ -366,7 +399,7 @@ class BlobFetcher():
             self.reset()
 
         ix, wrapped = self._get_next_minibatch_inds()
-        tmp = self.split_loader.next()
+        tmp = next(self.split_loader)
         if wrapped:
             self.reset()
 
