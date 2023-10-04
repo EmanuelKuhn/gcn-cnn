@@ -137,7 +137,10 @@ class GraphEncoder_25ChanStridedDecoder(nn.Module):
         
         self.read_out = nn.Sequential(nn.Linear(2000,self.dim), nn.ReLU())
         
-        self.decoder_FC = nn.Linear(self.dim, 32*14*6)
+        self.expected_output_size = (239, 239)
+        self.decoder_input_size = (14, 14)
+
+        self.decoder_FC = nn.Linear(self.dim, 32 * self.decoder_input_size[0] * self.decoder_input_size[1])
         
         self.decoder = nn.Sequential(
             nn.ConvTranspose2d(32,out_channels,3,  stride=2),
@@ -161,9 +164,10 @@ class GraphEncoder_25ChanStridedDecoder(nn.Module):
         self.obj_embed[0].weight.data.uniform_(-initrange, initrange)
         # self.attr_embed[0].weight.data.uniform_(-initrange, initrange)
        
+    
     def _decoder(self, x):
         x = self.decoder_FC(x)
-        x = x.reshape(x.size(0),32,14,6)
+        x = x.reshape(x.size(0), 32, self.decoder_input_size[0], self.decoder_input_size[1])
         x = self.decoder(x)
         return x    
         

@@ -211,11 +211,16 @@ def main(opt):
         emb_a = F.normalize(emb_a)
         emb_p = F.normalize(emb_p)
         emb_n = F.normalize(emb_n)
+
+        # Should use square images for rplan
+        expected_output_size = (239, 239)
+
+        assert model.expected_output_size == expected_output_size, "Expected output size is not correct"
         
         if opt.decoder_model == 'strided': 
-            images_a = F.interpolate(images_a, size= [239,111])
-            images_p = F.interpolate(images_p, size= [239,111])
-            images_n = F.interpolate(images_n, size= [239,111])
+            images_a = F.interpolate(images_a, size= expected_output_size)
+            images_p = F.interpolate(images_p, size= expected_output_size)
+            images_n = F.interpolate(images_n, size= expected_output_size)
         elif opt.decoder_model == 'upsample':
             raise NotImplementedError("Expected to use strided decoder")
             # images_a = F.interpolate(images_a, size= [254,126])
