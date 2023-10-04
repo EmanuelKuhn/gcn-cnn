@@ -21,7 +21,7 @@ from BoundingBoxes import BoundingBoxes
 
 from dataloaders.dataloader_triplet import *
 from dataloaders.dataloader_triplet import RICO_TripletDataset
-from dataloaders.dataloader import RICO_ComponentDataset
+from dataloaders.dataloader_test import RICO_ComponentDataset
 import models
 
 import opts_dml
@@ -88,7 +88,7 @@ def clip_gradient(optimizer, grad_clip):
             if param.grad is not None:
                 param.grad.data.clamp_(-grad_clip, grad_clip)        
 
-#%%
+
 def weighted_mse_loss(input, target, weight):
     mse = (input - target) ** 2      # B * C * W * H
     mse = torch.mean(mse, dim =(2,3))  #  B*C
@@ -142,7 +142,7 @@ def main(opt):
     model = model.cuda()
  
     if opt.pretrained:
-        pt_model = 'trained_model/model_dec_strided_dim1024_ep35.pth' # Trained GCN-CNN model
+        pt_model = opt.pt_model
         print('\n Loading from the Pretrained Network from... ')
         print(pt_model)       
         resume = load_checkpoint(pt_model)
@@ -167,6 +167,7 @@ def main(opt):
     dml_loss = dml_loss.cuda()
     
    
+    # Bounding boxes are only used for evaluation
     boundingBoxes = getBoundingBoxes_from_info()
     
     epoch_done = True
@@ -244,8 +245,17 @@ def main(opt):
         
         if epoch ==0 and iteration ==1:
             print("Training Started ")
-        
-        if iteration%1000 == 0:
+
+        # if iteration%10 == 0:
+        #     print(f"{iteration=}")
+
+        if data['bounds']['wrapped']:
+            epoch += 1
+            epoch_done = True 
+            iteration = 0 
+
+
+        if iteration%10 == 0 or data['bounds']['wrapped']:
             elsp_time = (time.time() - time_s)
             print( 'Epoch [%02d] [%05d / %05d] Average_Loss: %.5f    Recon Loss: %.4f  DML Loss: %.4f'%(epoch+1, iteration*opt.batch_size, len(loader), losses.avg, losses_recon.avg, losses_dml.avg ))
             with open(save_dir+'/log.txt', 'a') as f:
@@ -258,10 +268,9 @@ def main(opt):
         
             #print( 'Epoch [%02d] [%05d ] Average_Loss: %.3f' % (epoch+1, iteration*opt.batch_size, len(loader)))
         
-        if data['bounds']['wrapped']:
-            epoch += 1
-            epoch_done = True 
-            iteration = 0 
+
+            # print( 'Epoch [%02d] [%05d / %05d] Average_Loss: %.5f    Recon Loss: %.4f  DML Loss: %.4f'%(epoch+1, iteration*opt.batch_size, len(loader), losses.avg, losses_recon.avg, losses_dml.avg ))
+
             
         #del data, images, sg_data, out, loss 
     
@@ -283,7 +292,7 @@ def main(opt):
 def perform_tests_dml(model, loader_test, boundingBoxes,  save_dir, ep):
     model.eval()  
     save_file = save_dir + '/result.txt' 
-    q_feat, q_fnames = extract_features(model, loader_test, split='query')
+    q_feat, q_fnames = extract_features(model, loader_test, split='val')
     g_feat, g_fnames = extract_features(model, loader_test, split='gallery')
     
     onlyGallery = True
@@ -292,14 +301,17 @@ def perform_tests_dml(model, loader_test, boundingBoxes,  save_dir, ep):
         g_feat = np.vstack((g_feat,t_feat))
         g_fnames = g_fnames + t_fnames 
 
+    # Use train images as gallery
+    # g_feat, g_fnames = extract_features(model, loader_test, split='train')
+
     q_feat = np.concatenate(q_feat)
     g_feat = np.concatenate(g_feat)
     
     distances = cdist(q_feat, g_feat, metric= 'euclidean')
     sort_inds = np.argsort(distances)
 
-    overallMeanClassIou, overallMeanWeightedClassIou, classwiseClassIoU = get_overall_Classwise_IOU(boundingBoxes,sort_inds,g_fnames,q_fnames, topk = [1,5,10])
-    overallMeanAvgPixAcc, overallMeanWeightedPixAcc, classPixAcc = get_overall_pix_acc(boundingBoxes,sort_inds,g_fnames,q_fnames, topk = [1,5,10])     
+    overallMeanClassIou, overallMeanWeightedClassIou, classwiseClassIoU = get_overall_Classwise_IOU(boundingBoxes,sort_inds,g_fnames,q_fnames, topk = [1])
+    overallMeanAvgPixAcc, overallMeanWeightedPixAcc, classPixAcc = get_overall_pix_acc(boundingBoxes,sort_inds,g_fnames,q_fnames, topk = [1])
     
 
     print('\n\nep:%s'%(ep))
@@ -318,7 +330,14 @@ def perform_tests_dml(model, loader_test, boundingBoxes,  save_dir, ep):
         f.write('overallMeanAvgPixAcc =  ' + str([ '{:.3f}'.format(x) for x in overallMeanAvgPixAcc]) + '\n')
         
  
-def extract_features(model, loader, split='gallery'):
+def extract_features(model, loader, split):
+    """Extract features from model.
+    
+    Args:
+        model
+        loader
+        split: 'train', 'val', or 'gallery'
+    """
     epoch_done = False 
     feat = []
     fnames = [] 
