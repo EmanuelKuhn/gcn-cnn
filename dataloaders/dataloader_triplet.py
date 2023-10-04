@@ -156,7 +156,8 @@ class RICO_TripletDataset(Dataset):
         atexit.register(cleanup)
 
     def __len__(self):
-        return len(self.info)
+        """Returns the number of triplet anchors"""
+        return len(self.split_ix['train'])
     
     @staticmethod
     def load_npz(npz_path):
