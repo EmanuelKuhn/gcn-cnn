@@ -73,7 +73,7 @@ def parse_opt():
     # Optimization: General
     parser.add_argument('--loss', type=str, default='mse',  # 'bce', 'l1', 'huber', # 'wmse'
                         help='loss function to use, mse or bce')
-    parser.add_argument('--max_epochs', type=int, default=20,
+    parser.add_argument('--max_epochs', type=int, default=25,
                     help='number of epochs')
     parser.add_argument('--batch_size', type=int, default=4,  # 10,
                     help='minibatch size')
@@ -98,8 +98,6 @@ def parse_opt():
 
     parser.add_argument('--pt_model', type=str, default=None,
                 help='Path to pretrained model, used if --pretrained is True')
-
-    parser.add_argument('--max_epochs', type=int, default=25)
 
     args = parser.parse_args()
 
