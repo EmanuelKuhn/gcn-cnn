@@ -193,6 +193,8 @@ def main(opt):
     while True:
         if epoch_done:
 
+            epoch += 1
+            
             if epoch in [5,12,17]: 
                 decay_factor = opt.learning_rate_decay_rate
                 set_lr2(optimizer, decay_factor)
@@ -203,6 +205,7 @@ def main(opt):
             losses_dml = AverageMeter()
 
             epoch_done = False
+            iteration = 0
 
             total_epoch_time = 0
         
@@ -234,17 +237,14 @@ def main(opt):
         # Update the iteration and epoch
         iteration += 1
         
-        if epoch ==0 and iteration ==1:
+        if epoch == 0 and iteration == 1:
             print("Training Started ")
 
         # if iteration%10 == 0:
         #     print(f"{iteration=}")
 
         if data['bounds']['wrapped']:
-            epoch += 1
             epoch_done = True 
-            iteration = 0 
-
 
         log_interval = 10
 
@@ -269,9 +269,9 @@ def main(opt):
             })
 
 
-            print( 'Epoch [%02d] [%05d / %05d] Average_Loss: %.5f    Recon Loss: %.4f  DML Loss: %.4f'%(epoch+1, iteration*opt.batch_size, len(loader), losses.avg, losses_recon.avg, losses_dml.avg ))
+            print( 'Epoch [%02d] [%05d / %05d] Average_Loss: %.5f    Recon Loss: %.4f  DML Loss: %.4f'%(epoch, iteration*opt.batch_size, len(loader), losses.avg, losses_recon.avg, losses_dml.avg ))
             with open(save_dir+'/log.txt', 'a') as f:
-                f.write('Epoch [%02d] [%05d / %05d  ] Average_Loss: %.5f  Recon Loss: %.4f  DML Loss: %.4f\n'%(epoch+1, iteration*opt.batch_size, len(loader), losses.avg, losses_recon.avg, losses_dml.avg ))
+                f.write('Epoch [%02d] [%05d / %05d  ] Average_Loss: %.5f  Recon Loss: %.4f  DML Loss: %.4f\n'%(epoch, iteration*opt.batch_size, len(loader), losses.avg, losses_recon.avg, losses_dml.avg ))
                 f.write('Completed {} images in {}'.format(iteration*opt.batch_size, elsp_time))
                 
             
