@@ -31,8 +31,8 @@ from eval_metrics.get_overall_pix_acc import get_overall_pix_acc
 
 
 
-def main():
-    opt = opts_dml.parse_opt()
+def main(opt):
+    
     os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu_id
     onlyGallery = True
     opt.use_directed_graph = True
@@ -43,7 +43,9 @@ def main():
     boundingBoxes = getBoundingBoxes_from_info()
     #model_file = 'trained_models/model_dec_strided_dim1024_TRI_ep25.pth'
     # model_file = 'trained_models/model_dec_strided_dim1024_ep35.pth'
-    model_file = "trained_model/model_dec_strided_dim1024/ckp_ep10+25.pth.tar"
+    # model_file = "trained_model/model_dec_strided_dim1024/ckp_ep10+25.pth.tar"
+
+    model_file = opt.pt_model
    
       
     # data_transform = transforms.Compose([  # Not used for 25Channel_images
@@ -161,4 +163,7 @@ def getBoundingBoxes_from_info(info_file = 'layoutgmn_data/FP_box_info.pkl'):
 
 #%%
 if __name__ == '__main__':
-    main()
+
+    opt = opts_dml.parse_opt()
+
+    main(opt)
