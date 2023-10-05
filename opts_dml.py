@@ -30,9 +30,9 @@ def parse_opt():
                     help='margin parameter of triplet loss')
     
     # Directories
-    parser.add_argument('--img_dir', type=str, default='/mnt/amber/scratch/Dipu/RICO/semantic_annotations/',  
+    parser.add_argument('--img_dir', type=str, default=None,  
                     help='path to the semantic UI images of RICO dataset')
-    parser.add_argument('--Channel25_img_dir', type=str, default='/mnt/amber/scratch/Dipu/RICO/25ChannelImages',  
+    parser.add_argument('--Channel25_img_dir', type=str, default="fp_data/rplan12ChanImages",  
                     help='path to the precomputed 25 Channel image representation of RICO UIs')
     
     
@@ -55,7 +55,7 @@ def parse_opt():
                         help ='whether to pre-computed 25 Channel Images for faster dataloading/training') 
     parser.add_argument('--use_25_images', type=str2bool, default =True,  
                         help ='whether to use 3-channel Semanti UI or 25 Channel images for loss')
-    parser.add_argument('--apn_dict_path', type=str, default ='Triplets/apn_dict_48K_pthres60.pkl', 
+    parser.add_argument('--apn_dict_path', type=str, default ="fp_data/apn_dict_13K_pthres60.pkl", 
                         help='path to the training triplets computed based on IoU')
     parser.add_argument('--xy_modified_feat', type=str2bool, default = False,
                         help='xy shifts normalized by width  & height or by the area')
@@ -63,6 +63,8 @@ def parse_opt():
                         help='undirected or directed graph')
     parser.add_argument('--use_box_feats', type=str2bool, default = True, 
                         help='whether to use geometric box features')
+    # parser.add_argument('--use_box_feats', type=str2bool, default = False, 
+    #                     help='whether to use geometric box features')
     parser.add_argument('--use_7D_feat', type=str2bool, default = False, 
                         help='whether to use geometric box features')
     parser.add_argument('--hardmining', type=str2bool, default = False, 
@@ -93,7 +95,10 @@ def parse_opt():
     
     parser.add_argument('--drop_prob', type=float, default=0.5,
                     help='strength of dropout various layers')
-    
+
+    parser.add_argument('--pt_model', type=str, default=None,
+                help='Path to pretrained model, used if --pretrained is True')
+
     args = parser.parse_args()
 
     return args

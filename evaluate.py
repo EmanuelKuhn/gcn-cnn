@@ -42,14 +42,17 @@ def main():
 
     boundingBoxes = getBoundingBoxes_from_info()
     #model_file = 'trained_models/model_dec_strided_dim1024_TRI_ep25.pth'
-    model_file = 'trained_models/model_dec_strided_dim1024_ep35.pth'
+    # model_file = 'trained_models/model_dec_strided_dim1024_ep35.pth'
+    model_file = "trained_model/model_dec_strided_dim1024/v2_ckp_ep20.pth.tar"
    
       
-    data_transform = transforms.Compose([  # Not used for 25Channel_images
-            transforms.Resize([255,127]),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-            ]) 
+    # data_transform = transforms.Compose([  # Not used for 25Channel_images
+    #         transforms.Resize([255,127]),
+    #         transforms.ToTensor(),
+    #         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    #         ]) 
+
+    data_transform = None
     
 
     model = models.create(opt.decoder_model, opt)
@@ -61,9 +64,21 @@ def main():
     loader = RICO_ComponentDataset(opt, data_transform)     
     
     q_feat, q_fnames = extract_features(model, loader, split='query')
-    g_feat, g_fnames = extract_features(model, loader, split='gallery')
+    g_feat, g_fnames = extract_features(model, loader, split='train')
     
+
+    val_results = {
+        "val_feats": q_feat,
+        "val_fnames": q_fnames,
+        "train_feats": g_feat,
+        "train_fnames": g_fnames
+    }
+
+    with open("val_results.pkl", "wb") as f:
+        pickle.dump(val_results, f)
     
+    return
+
     if not(onlyGallery):
         t_feat, t_fnames = extract_features(model, loader, split='train')
         g_feat = np.vstack((g_feat,t_feat))
@@ -111,7 +126,7 @@ def extract_features(model, loader, split='gallery'):
     
 
 # prepare bounding boxes information for RICO datgsaet
-def getBoundingBoxes_from_info(info_file = 'data/rico_box_info.pkl'):
+def getBoundingBoxes_from_info(info_file = 'fp_data/FP_box_info.pkl'):
     allBoundingBoxes = BoundingBoxes()
     info = pickle.load(open(info_file, 'rb'))
     #files = glob.glob(data_dir+ "*.json")
@@ -119,6 +134,9 @@ def getBoundingBoxes_from_info(info_file = 'data/rico_box_info.pkl'):
         count = info[imageName]['nComponent']
         for i in range(count):
             box = info[imageName]['xywh'][i]
+
+            # print(f"{info[imageName].keys()=}")
+
             bb = BoundingBox(
                 imageName,
                 info[imageName]['componentLabel'][i],
@@ -126,8 +144,9 @@ def getBoundingBoxes_from_info(info_file = 'data/rico_box_info.pkl'):
                 box[1],
                 box[2],
                 box[3],
-                iconClass=info[imageName]['iconClass'],
-                textButtonClass=info[imageName]['textButtonClass'])
+                # iconClass=info[imageName]['iconClass'],
+                # textButtonClass=info[imageName]['textButtonClass']
+                )
             allBoundingBoxes.addBoundingBox(bb) 
     print('Collected {} bounding boxes from {} images'. format(allBoundingBoxes.count(), len(info) ))         
 #    testBoundingBoxes(allBoundingBoxes)

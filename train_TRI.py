@@ -88,7 +88,7 @@ def clip_gradient(optimizer, grad_clip):
             if param.grad is not None:
                 param.grad.data.clamp_(-grad_clip, grad_clip)        
 
-#%%
+
 def weighted_mse_loss(input, target, weight):
     mse = (input - target) ** 2      # B * C * W * H
     mse = torch.mean(mse, dim =(2,3))  #  B*C
@@ -137,12 +137,13 @@ def main(opt):
     print ('\nOutput dir: ', save_dir)
     
     loader = RICO_TripletDataset(opt, data_transform) 
-    loader_test = RICO_ComponentDataset(opt, data_transform)
+    # loader_test = RICO_ComponentDataset(opt, data_transform)
     model = models.create(opt.decoder_model, opt)
     model = model.cuda()
  
     if opt.pretrained:
-        pt_model = 'trained_model/model_dec_strided_dim1024_ep35.pth' # Trained GCN-CNN model
+        pt_model = opt.pt_model
+        # pt_model = 'trained_model/model_dec_strided_dim1024/ckp_ep35.pth.tar' # Trained GCN-CNN model
         print('\n Loading from the Pretrained Network from... ')
         print(pt_model)       
         resume = load_checkpoint(pt_model)
@@ -167,7 +168,7 @@ def main(opt):
     dml_loss = dml_loss.cuda()
     
    
-    boundingBoxes = getBoundingBoxes_from_info()
+    # boundingBoxes = getBoundingBoxes_from_info()
     
     epoch_done = True
     iteration = 0
@@ -244,8 +245,17 @@ def main(opt):
         
         if epoch ==0 and iteration ==1:
             print("Training Started ")
-        
-        if iteration%1000 == 0:
+
+        # if iteration%10 == 0:
+        #     print(f"{iteration=}")
+
+        if data['bounds']['wrapped']:
+            epoch += 1
+            epoch_done = True 
+            iteration = 0 
+
+
+        if iteration%10 == 0 or data['bounds']['wrapped']:
             elsp_time = (time.time() - time_s)
             print( 'Epoch [%02d] [%05d / %05d] Average_Loss: %.5f    Recon Loss: %.4f  DML Loss: %.4f'%(epoch+1, iteration*opt.batch_size, len(loader), losses.avg, losses_recon.avg, losses_dml.avg ))
             with open(save_dir+'/log.txt', 'a') as f:
@@ -258,10 +268,9 @@ def main(opt):
         
             #print( 'Epoch [%02d] [%05d ] Average_Loss: %.3f' % (epoch+1, iteration*opt.batch_size, len(loader)))
         
-        if data['bounds']['wrapped']:
-            epoch += 1
-            epoch_done = True 
-            iteration = 0 
+
+            # print( 'Epoch [%02d] [%05d / %05d] Average_Loss: %.5f    Recon Loss: %.4f  DML Loss: %.4f'%(epoch+1, iteration*opt.batch_size, len(loader), losses.avg, losses_recon.avg, losses_dml.avg ))
+
             
         #del data, images, sg_data, out, loss 
     
@@ -272,7 +281,7 @@ def main(opt):
             'state_dict': state_dict,
             'epoch': (epoch+1)}, is_best=False, fpath=osp.join(save_dir, 'ckp_ep' + str(epoch + 1) + '.pth.tar'))
 
-            perform_tests_dml(model, loader_test, boundingBoxes,  save_dir, epoch)
+            # perform_tests_dml(model, loader_test, boundingBoxes,  save_dir, epoch)
             
             # set model to training mode again.
             model.train()

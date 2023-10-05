@@ -31,35 +31,6 @@ import random
 def default_loader(path):
     return Image.open(path).convert('RGB')
 
-def get_com2index():
-    com2index = {
-            'Toolbar':          1,
-            'Image':            2,
-            'Icon':             3,
-            'Web View':         4,
-            'Text Button':      5,
-            'Text':             6,
-            'Multi-Tab':        7,
-            'Card':             8,
-            'List Item':        9,
-            'Advertisement':    10,
-            'Background Image': 11,
-            'Drawer':           12,
-            'Input':            13,
-            'Bottom Navigation':14,
-            'Modal':            15,
-            'Button Bar':       16,
-            'Pager Indicator':  17,
-            'On/Off Switch':    18,
-            'Checkbox':         19,
-            'Map View':         20,
-            'Radio Button':     21,
-            'Slider':           22,
-            'Number Stepper':   23,
-            'Video':            24,
-            'Date Picker':      25,
-            }
-    return com2index
 
 def pickle_save(fname, data):
     with open(fname, 'wb') as pf:
@@ -72,6 +43,24 @@ def pickle_load(fname):
          print('Loaded {}.'.format(fname))
          return data
 
+# def load_pickle(path):
+#     with open(path, "rb") as f:
+#         return pkl.load(f)
+
+
+def get_id_from_path(path):
+    return path.split("/")[-1].split(".")[0]
+
+def get_splits(path="fp_data/FP_data.p"):
+    fp_data = pickle_load(path)
+
+
+    splits = dict()
+
+    for key in fp_data:
+        splits[key] = list(map(get_id_from_path, fp_data[key]))
+
+    return splits
 
 #%%
 class RICO_TripletDataset(Dataset):
@@ -87,18 +76,17 @@ class RICO_TripletDataset(Dataset):
     def __init__(self,opt, transform):
         self.opt = opt
         
-        self.info = pickle.load(open('data/rico_box_info_list.pkl', 'rb'))
+        self.info = pickle.load(open('fp_data/FP_box_info_list.pkl', 'rb'))
         self.img_dir = self.opt.img_dir
         self.Channel_img_dir = self.opt.Channel25_img_dir
 
-        self.sg_geometry_dir = 'graph_data/geometry-directed/'                
+        self.sg_geometry_dir = 'fp_data/geometry-directed/'                
         print('\nLoading geometric graphs and features from {}\n'.format(self.sg_geometry_dir))
         
         self.batch_size = self.opt.batch_size
         self.transform = transform
         self.loader = default_loader     
        
-        self.com2index = get_com2index()
         self.geometry_relation = True
         self.geom_feat_size = 8
         
@@ -108,24 +96,26 @@ class RICO_TripletDataset(Dataset):
         train_uis = list(self.apn_dict.keys())
         
         # Separate out indexes for the train and test 
-        UI_data = pickle.load(open("data/UI_data.p", "rb"))
-        orig_train_uis = UI_data['train_uis']
+        splits = get_splits("fp_data/FP_data.p")
+
+        # UI_data = pickle.load(open(, "rb"))
+        # orig_train_uis = UI_data['train_fps']
         
-        UI_test_data = pickle.load(open("data/UI_test_data.p", "rb"))
-        query_uis = UI_test_data['query_uis']
-        gallery_uis = UI_test_data['gallery_uis']
+        # UI_test_data = pickle.load(open("data/UI_test_data.p", "rb"))
+        # query_uis = UI_test_data['query_uis']
+        # gallery_uis = UI_test_data['gallery_uis']
         
-        # Remove '.png' extension for ease
-        orig_train_uis = [x.replace('.png', '') for x in orig_train_uis]
-        query_uis = [x.replace('.png', '') for x in query_uis]
-        gallery_uis = [x.replace('.png', '') for x in gallery_uis]
+        # # Remove '.png' extension for ease
+        # orig_train_uis = [x.replace('.png', '') for x in orig_train_uis]
+        # query_uis = [x.replace('.png', '') for x in query_uis]
+        # gallery_uis = [x.replace('.png', '') for x in gallery_uis]
         
-        # Donot use the images with large number of components. 
-        uis_ncomponent_g100 = pickle.load(open('data/ncomponents_g100_imglist.pkl', 'rb'))
-        self.orig_train_uis = list(set(orig_train_uis) & set([x['id'] for x in self.info]))  #some img (e.g. img with no comp are removed in info)
-        self.orig_train_uis = list(set(self.orig_train_uis) - set(uis_ncomponent_g100))
+        # # Donot use the images with large number of components. 
+        # uis_ncomponent_g100 = pickle.load(open('data/ncomponents_g100_imglist.pkl', 'rb'))
+        self.orig_train_uis = list(set(splits["train_fps"]) & set([x['id'] for x in self.info]))  #some img (e.g. img with no comp are removed in info)
+        # self.orig_train_uis = list(set(self.orig_train_uis) - set(uis_ncomponent_g100))
         
-        train_uis = list(set(train_uis) - set(uis_ncomponent_g100))
+        train_uis = list(set(train_uis))
         
         
         #Instantiate the ix
@@ -136,17 +126,20 @@ class RICO_TripletDataset(Dataset):
         
         for ix in range(len(self.info)):
             img = self.info[ix]['id']
+
+            assert isinstance(img, str), f"img is not a string: {img}"
+
             self.id2index[img] = ix  
-            if img in train_uis and img not in uis_ncomponent_g100 :
+            if img in train_uis:
                 self.split_ix['train'].append(ix)
-            elif img in query_uis and img not in uis_ncomponent_g100:
+            elif img in splits["val_fps"]:
                 self.split_ix['query'].append(ix)
-            elif img in gallery_uis and img not in uis_ncomponent_g100:
-                self.split_ix['gallery'].append(ix)
-            #else:
-             #   raise Exception('image is not in the original list')
+            # elif img in gallery_uis:
+            #     self.split_ix['gallery'].append(ix)
+            # else:
+            #    raise Exception(f'image {img} ({isinstance(img, str)}) is not in the original list')
         
-        self.iterators = {'train': 0,  'query': 0,  'gallery': 0}
+        self.iterators = {'train': 0,  'query': 0}
         
         for split in self.split_ix.keys():
             print('assigned %d images to split %s'%(len(self.split_ix[split]), split))
@@ -165,6 +158,14 @@ class RICO_TripletDataset(Dataset):
     def __len__(self):
         return len(self.info)
     
+    @staticmethod
+    def load_npz(npz_path):
+        with np.load(npz_path) as data:
+            img = torch.tensor(data["arr_0"], dtype=torch.float32)
+        
+        return img
+
+
     def __getitem__(self, index):
 #        ix = index #self.split_ix[index]
         
@@ -172,10 +173,13 @@ class RICO_TripletDataset(Dataset):
         image_id = self.info[index]['id']
         
         if self.opt.use_25_images:
-            # c_img = self.get_classwise_channel_image(index) #transform/resize this later
-            channel25_path = os.path.join(self.Channel_img_dir, image_id + '.npy' )
-            img = np.load(channel25_path)    
-            img = torch.tensor(img.astype(np.float32))
+            # # c_img = self.get_classwise_channel_image(index) #transform/resize this later
+            channel25_path = os.path.join(self.Channel_img_dir, image_id + '.npz' )
+            # img = np.load(channel25_path)    
+            # img = torch.tensor(img.astype(np.float32))
+            img = self.load_npz(channel25_path)
+
+
         else:
             img_name = os.path.join(self.img_dir, str(image_id) +'.png' )
             img = self.loader(img_name)
@@ -268,9 +272,10 @@ class RICO_TripletDataset(Dataset):
             
         if self.opt.use_25_images:
             if self.opt.use_precomputed_25Chan_imgs:
-                channel25_path = os.path.join(self.Channel_img_dir, image_id + '.npy' )
-                img = np.load(channel25_path)    
-                img = torch.tensor(img.astype(np.float32))
+                channel25_path = os.path.join(self.Channel_img_dir, image_id + '.npz' )
+                # img = np.load(channel25_path)    
+                # img = torch.tensor(img.astype(np.float32))
+                img = self.load_npz(channel25_path)
             else:
                 img = self.get_classwise_channel_image(index) #transform/resize this later
         else:
@@ -312,8 +317,10 @@ class RICO_TripletDataset(Dataset):
         return c_img    
 
     def get_box_feats(self,box):
+        # raise NotImplementedError()
+
         boxes = np.array(box)
-        W, H = 1440, 2560  # We know the height and weight for all semantic UIs are 2560 and 1400
+        W, H = 256, 256  # We know the height and weight for all semantic UIs are 2560 and 1400
         
         x1, y1, w, h = np.hsplit(boxes,4)
         x2, y2 = x1+w, y1+h 
@@ -496,7 +503,7 @@ class BlobFetcher():
             self.reset()
 
         ix, wrapped = self._get_next_minibatch_inds()
-        tmp = self.split_loader.next()
+        tmp = next(self.split_loader)
         if wrapped:
             self.reset()
 

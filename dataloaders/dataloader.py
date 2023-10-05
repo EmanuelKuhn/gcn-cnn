@@ -67,11 +67,11 @@ class RICO_ComponentDataset(Dataset):
     def __init__(self,opt, transform):
         self.opt = opt
         
-        self.info = pickle.load(open('data/rico_box_info_list.pkl', 'rb'))
+        self.info = pickle.load(open('fp_data/FP_box_info_list.pkl', 'rb'))
         self.Channel_img_dir = self.opt.Channel25_img_dir
         self.img_dir = self.opt.img_dir
 
-        self.sg_geometry_dir = 'graph_data/geometry-directed/'                
+        self.sg_geometry_dir = 'fp_data/geometry-directed/'                
         print('\nLoading geometric graphs and features from {}\n'.format(self.sg_geometry_dir))
         
         self.batch_size = self.opt.batch_size
@@ -84,7 +84,7 @@ class RICO_ComponentDataset(Dataset):
 
         
         # Separate out indexes for the train and test 
-        UI_data = pickle.load(open("data/UI_data.p", "rb"))
+        UI_data = pickle.load(open("fp_data/FP_data.p", "rb"))
         train_uis = UI_data['train_uis']
         
         UI_test_data = pickle.load(open("data/UI_test_data.p", "rb"))

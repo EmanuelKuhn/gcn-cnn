@@ -12,8 +12,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import init_paths
 
-from BoundingBox import BoundingBox
-from BoundingBoxes import BoundingBoxes
+from lib.BoundingBox import BoundingBox
+from lib.BoundingBoxes import BoundingBoxes
 
 from dataloaders.dataloader import *
 from dataloaders.dataloader import RICO_ComponentDataset
