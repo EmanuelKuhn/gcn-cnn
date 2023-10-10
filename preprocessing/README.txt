@@ -5,3 +5,4 @@
 3. Run `python preprocessing/1_build_geometry_graph.py`
 4. Run `python preprocessing/compute_25Chan_Imgs.py`
 
+Use `the create_custom_apn_dict.ipynb` notebook to make training triplets using your own IoU labels, or with different splits.
